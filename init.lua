@@ -91,7 +91,7 @@ vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
 
 -- Set to true if you have a Nerd Font installed and selected in the terminal
-vim.g.have_nerd_font = false
+vim.g.have_nerd_font = true
 
 -- [[ Setting options ]]
 -- See `:help vim.o`
@@ -184,6 +184,30 @@ vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagn
 -- or just use <C-\><C-n> to exit terminal mode
 vim.keymap.set('t', '<Esc><Esc>', '<C-\\><C-n>', { desc = 'Exit terminal mode' })
 
+-- Add terminal options :
+-- Auto clear on opened terminal
+-- small terminal : <leader>st
+-- normal terminal : <leader>nt
+local job_id = 0
+vim.api.nvim_create_autocmd('TermOpen', {
+  group = vim.api.nvim_create_augroup('custom_term_open', { clear = true }),
+  callback = function()
+    job_id = vim.bo.channel
+    vim.fn.chansend(job_id, { 'clear\r\n' })
+    vim.cmd.startinsert()
+  end,
+})
+
+vim.keymap.set('n', '<leader>ns', function()
+  vim.cmd.new()
+  vim.cmd.term()
+  vim.api.nvim_win_set_height(0, 10)
+end, { desc = 'Open a [n]ew [s]mall terminal' })
+
+vim.keymap.set('n', '<leader>nt', function()
+  vim.cmd.new()
+  vim.cmd.term()
+end, { desc = 'Open a [n]ew [t]erminal' })
 -- TIP: Disable arrow keys in normal mode
 -- vim.keymap.set('n', '<left>', '<cmd>echo "Use h to move!!"<CR>')
 -- vim.keymap.set('n', '<right>', '<cmd>echo "Use l to move!!"<CR>')
@@ -344,6 +368,7 @@ require('lazy').setup({
 
       -- Document existing key chains
       spec = {
+        { '<leader>n', group = '[N]ew' },
         { '<leader>s', group = '[S]earch' },
         { '<leader>t', group = '[T]oggle' },
         { '<leader>h', group = 'Git [H]unk', mode = { 'n', 'v' } },
@@ -671,9 +696,12 @@ require('lazy').setup({
       --  - settings (table): Override the default settings passed when initializing the server.
       --        For example, to see the options for `lua_ls`, you could go to: https://luals.github.io/wiki/settings/
       local servers = {
-        -- clangd = {},
+        clangd = {},
+        bashls = {},
+        -- shellcheck = {},
         -- gopls = {},
-        -- pyright = {},
+        basedpyright = {},
+        sqlls = {},
         -- rust_analyzer = {},
         -- ... etc. See `:help lspconfig-all` for a list of all the pre-configured LSPs
         --
@@ -716,6 +744,12 @@ require('lazy').setup({
       local ensure_installed = vim.tbl_keys(servers or {})
       vim.list_extend(ensure_installed, {
         'stylua', -- Used to format Lua code
+        'clang-format',
+        'isort',
+        'black',
+        'shfmt',
+        'bashls',
+        'sql-formatter',
       })
       require('mason-tool-installer').setup { ensure_installed = ensure_installed }
 
@@ -756,7 +790,7 @@ require('lazy').setup({
         -- Disable "format_on_save lsp_fallback" for languages that don't
         -- have a well standardized coding style. You can add additional
         -- languages here or re-enable it for the disabled ones.
-        local disable_filetypes = { c = true, cpp = true }
+        local disable_filetypes = { c = true }
         if disable_filetypes[vim.bo[bufnr].filetype] then
           return nil
         else
@@ -768,11 +802,19 @@ require('lazy').setup({
       end,
       formatters_by_ft = {
         lua = { 'stylua' },
+        cpp = { 'clang-format' },
+        bash = { 'shfmt' },
         -- Conform can also run multiple formatters sequentially
-        -- python = { "isort", "black" },
+        python = { 'isort', 'black' },
+        sql = { 'sql-formatter' },
         --
         -- You can use 'stop_after_first' to run the first available formatter from the list
         -- javascript = { "prettierd", "prettier", stop_after_first = true },
+      },
+      formatters = {
+        ['clang-format'] = {
+          prepend_args = { '--style=Google' },
+        },
       },
     },
   },
@@ -814,7 +856,7 @@ require('lazy').setup({
     --- @type blink.cmp.Config
     opts = {
       keymap = {
-        -- 'default' (recommended) for mappings similar to built-in completions
+        --'default', -- (recommended) for mappings similar to built-in completions
         --   <c-y> to accept ([y]es) the completion.
         --    This will auto-import if your LSP supports it.
         --    This will expand snippets if the LSP sent a snippet.
@@ -941,10 +983,28 @@ require('lazy').setup({
   { -- Highlight, edit, and navigate code
     'nvim-treesitter/nvim-treesitter',
     build = ':TSUpdate',
-    main = 'nvim-treesitter.configs', -- Sets main module to use for opts
+    main = 'nvim-treesitter.config', -- Sets main module to use for opts
     -- [[ Configure Treesitter ]] See `:help nvim-treesitter`
     opts = {
-      ensure_installed = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc' },
+      ensure_installed = {
+        'bash',
+        'c',
+        'cpp',
+        'diff',
+        'html',
+        'lua',
+        'luadoc',
+        'markdown',
+        'markdown_inline',
+        'query',
+        'vim',
+        'vimdoc',
+        'r',
+        'rnoweb',
+        'yaml',
+        'latex',
+        'csv',
+      },
       -- Autoinstall languages that are not installed
       auto_install = true,
       highlight = {
@@ -963,7 +1023,53 @@ require('lazy').setup({
     --    - Show your current context: https://github.com/nvim-treesitter/nvim-treesitter-context
     --    - Treesitter + textobjects: https://github.com/nvim-treesitter/nvim-treesitter-textobjects
   },
-
+  {
+    'R-nvim/R.nvim',
+    -- Only required if you also set defaults.lazy = true
+    lazy = false,
+    -- R.nvim is still young and we may make some breaking changes from time
+    -- to time (but also bug fixes all the time). If configuration stability
+    -- is a high priority for you, pin to the latest minor version, but unpin
+    -- it and try the latest version before reporting an issue:
+    -- version = "~0.1.0"
+    config = function()
+      -- Create a table with the options to be passed to setup()
+      ---@type RConfigUserOpts
+      local opts = {
+        hook = {
+          on_filetype = function()
+            vim.api.nvim_buf_set_keymap(0, 'n', '<Enter>', '<Plug>RDSendLine', {})
+            vim.api.nvim_buf_set_keymap(0, 'v', '<Enter>', '<Plug>RSendSelection', {})
+          end,
+        },
+        R_args = { '--quiet', '--no-save' },
+        min_editor_width = 72,
+        rconsole_width = 78,
+        objbr_mappings = { -- Object browser keymap
+          c = 'class', -- Call R functions
+          ['<leader>gg'] = 'head({object}, n = 15)', -- Use {object} notation to write arbitrary R code.
+          v = function()
+            -- Run lua functions
+            require('r.browser').toggle_view()
+          end,
+        },
+        disable_cmds = {
+          'RClearConsole',
+          'RCustomStart',
+          'RSPlot',
+          'RSaveClose',
+        },
+      }
+      -- Check if the environment variable "R_AUTO_START" exists.
+      -- If using fish shell, you could put in your config.fish:
+      -- alias r "R_AUTO_START=true nvim"
+      if vim.env.R_AUTO_START == 'true' then
+        opts.auto_start = 'on startup'
+        opts.objbr_auto_start = true
+      end
+      require('r').setup(opts)
+    end,
+  },
   -- The following comments only work if you have downloaded the kickstart repo, not just copy pasted the
   -- init.lua. If you want these files, they are in the repository, so you can just download them and
   -- place them in the correct locations.
@@ -973,7 +1079,7 @@ require('lazy').setup({
   --  Here are some example plugins that I've included in the Kickstart repository.
   --  Uncomment any of the lines below to enable them (you will need to restart nvim).
   --
-  -- require 'kickstart.plugins.debug',
+  require 'kickstart.plugins.debug',
   -- require 'kickstart.plugins.indent_line',
   -- require 'kickstart.plugins.lint',
   -- require 'kickstart.plugins.autopairs',
@@ -984,7 +1090,7 @@ require('lazy').setup({
   --    This is the easiest way to modularize your config.
   --
   --  Uncomment the following line and add your plugins to `lua/custom/plugins/*.lua` to get going.
-  -- { import = 'custom.plugins' },
+  { import = 'custom.plugins' },
   --
   -- For additional information with loading, sourcing and examples see `:help lazy.nvim-🔌-plugin-spec`
   -- Or use telescope!
