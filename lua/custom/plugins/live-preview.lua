@@ -1,11 +1,7 @@
 -- Visualize markdowns in a web navigator like firefox
 
----@module 'lazy'
----@type LazySpec
-return {
-  'brianhuster/live-preview.nvim',
-  dependencies = {
-    -- You can choose one of the following pickers
-    'nvim-telescope/telescope.nvim',
-  },
+vim.pack.add {
+  'https://github.com/brianhuster/live-preview.nvim',
+  -- You can choose one of the following pickers
+  'https://github.com/nvim-telescope/telescope.nvim',
 }
