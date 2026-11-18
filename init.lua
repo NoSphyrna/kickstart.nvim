@@ -199,7 +199,7 @@ vim.keymap.set('t', '<Esc><Esc>', '<C-\\><C-n>', { desc = 'Exit terminal mode' }
 
 -- Add terminal options :
 -- Auto clear on opened terminal
--- small terminal : <leader>st
+-- small terminal : <leader>ns
 -- normal terminal : <leader>nt
 local job_id = 0
 vim.api.nvim_create_autocmd('TermOpen', {
@@ -619,7 +619,12 @@ require('lazy').setup({
           end
         end,
       })
-
+      -- Map .cql extension to the 'cypher' filetype
+      vim.filetype.add {
+        extension = {
+          cql = 'cypher',
+        },
+      }
       -- Enable the following language servers
       --  Feel free to add/remove any LSPs that you want here. They will automatically be installed.
       --  See `:help lsp-config` for information about keys and how to configure
@@ -631,6 +636,8 @@ require('lazy').setup({
         -- gopls = {},
         basedpyright = {},
         sqlls = {},
+        cypher_ls = {},
+        air = {},
         -- rust_analyzer = {},
         --
         -- Some languages (like typescript) have entire language plugins that can be useful:
@@ -687,6 +694,8 @@ require('lazy').setup({
         'shfmt',
         'bashls',
         'sql-formatter',
+        'mdformat',
+        'air',
         -- You can add other tools here that you want Mason to install
       })
 
@@ -736,6 +745,8 @@ require('lazy').setup({
         -- Conform can also run multiple formatters sequentially
         python = { 'isort', 'black' },
         sql = { 'sql-formatter' },
+        markdown = { 'mdformat' },
+        r = { 'air' },
         --
         -- You can use 'stop_after_first' to run the first available formatter from the list
         -- javascript = { "prettierd", "prettier", stop_after_first = true },
@@ -917,7 +928,26 @@ require('lazy').setup({
     branch = 'main',
     -- [[ Configure Treesitter ]] See `:help nvim-treesitter-intro`
     config = function()
-      local parsers = { 'bash', 'c', 'cpp', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc', 'r', 'rnoweb', 'yaml', 'latex', 'csv' }
+      local parsers = {
+        'bash',
+        'c',
+        'cpp',
+        'diff',
+        'html',
+        'lua',
+        'luadoc',
+        'make',
+        'markdown',
+        'markdown_inline',
+        'query',
+        'vim',
+        'vimdoc',
+        'r',
+        'rnoweb',
+        'yaml',
+        'latex',
+        'csv',
+      }
       require('nvim-treesitter').install(parsers)
       vim.api.nvim_create_autocmd('FileType', {
         callback = function(args)
@@ -999,11 +1029,11 @@ require('lazy').setup({
   --  Uncomment any of the lines below to enable them (you will need to restart nvim).
   --
   require 'kickstart.plugins.debug',
-  -- require 'kickstart.plugins.indent_line',
-  -- require 'kickstart.plugins.lint',
-  -- require 'kickstart.plugins.autopairs',
-  -- require 'kickstart.plugins.neo-tree',
-  -- require 'kickstart.plugins.gitsigns', -- adds gitsigns recommended keymaps
+  require 'kickstart.plugins.indent_line',
+  require 'kickstart.plugins.lint',
+  require 'kickstart.plugins.autopairs',
+  require 'kickstart.plugins.neo-tree',
+  require 'kickstart.plugins.gitsigns', -- adds gitsigns recommended keymaps
 
   -- NOTE: The import below can automatically add your own plugins, configuration, etc from `lua/custom/plugins/*.lua`
   --    This is the easiest way to modularize your config.
