@@ -41,5 +41,5 @@ require('csvview').setup {
 
     -- { '<leader>e', function() require('csvview').enable() end, desc = 'csvView : Enable' },
   },
+  cmd = { 'CsvViewEnable', 'CsvViewDisable', 'CsvViewToggle' },
 }
-vim.cmd.add { 'CsvViewEnable', 'CsvViewDisable', 'CsvViewToggle' }
